@@ -97,16 +97,4 @@ GEMINI_MODEL_NAME=gemini-3.7-flash   # 선택
 
 ## 구조
 
-```
-app.py                 Streamlit 화면 (체크리스트 → PDF 업로드 → 상세 리포트)
-graph.py               LangGraph 흐름: 관문 노드, 병렬 분기, 합산
-state.py               공유 상태(KCIEvalState), 등급 타입
-config.py              배점·과락 기준·등급 환산표, 모델 이름
-agents/
-  agent1_foreign_lang.py   체계평가 (외국어 초록·키워드. 발간 횟수·접근성은 꺼 둠)
-  agent2_academic_value.py 학술적 가치 (54점)
-  agent3_structure.py      구성·체제·가독성 (26점)  ← 내 담당
-  agent4_final_decision.py 종합심의 (판정 코드 + LLM 코멘트)
-  tools/                   OpenAlex · Tavily 조회 도구
-data/                  합성 평가 데이터와 설계 문서  ← 내 담당
-```
+![코드 구조](docs/assets/readme/kci-structure.png)
