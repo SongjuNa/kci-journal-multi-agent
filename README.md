@@ -34,6 +34,29 @@
 
 <br>
 
+## 노드별 입력과 출력
+
+KCI 프로젝트는 REST API 없이 Streamlit 화면에서 LangGraph 그래프(`graph.py`)를 바로 호출합니다. 아래 표는 그래프 노드마다 공유 상태(`state.py`의 `KCIEvalState`)에서 무엇을 읽고 무엇을 쓰는지 정리한 것입니다. 배점과 기준값은 `config.py`에 있습니다.
+
+★ 표시는 내 담당입니다.
+
+| 순서 | 노드 | 읽는 값 | 쓰는 값 | 판단 |
+|---|---|---|---|---|
+| 1 | `stage1_gate` (1단계 신청자격) | `stage1_checklist` — 발행규칙성·심사위원수·연구윤리·투고다양성·기본체계 5항목 (화면 체크) | `stage1_pass` · 하나라도 미충족이면 `final_verdict`=탈락, `rejection_reason` | 코드 |
+| 2 | `agent1_foreign_lang` (Agent1 체계평가) | `paper.raw_text` (주제어·초록) | `foreign_language_ratio`·`foreign_language_reason` → `foreign_lang_score`(외국어화 100% 20점 · 90% 이상 15점 · 80% 이상 10점 · 70% 이상 5점 · 미만 0점), `total_stage2_score`(20점 만점) | LLM(비율 판정) + 코드(점수) |
+| 3 | `stage2_gate` (2단계 항목과락) | `total_stage2_pass`, `total_stage2_score` | 0점이면 `final_verdict`=탈락, `final_score`=0, `rejection_reason` | 코드 |
+| 4 | `agent2_academic_value` (Agent2 학술적 가치) | `paper.raw_text`, `journal_meta`(대·중분야) | `stage3_results`에 추가 — 3항목 A~F 등급·근거 → 점수(54점 만점: 인지도·활용도 9.5, 학술적 가치·적합성 31.8, 주제 부합도 12.7) | LLM(등급·근거) + 코드(점수) |
+| 4 | `agent3_structure` ★ (Agent3 구성·체제·가독성) | `paper.raw_text` | `stage3_results`에 추가 — 3항목 A~F 등급·근거 → 점수(26점 만점: 구성·체제 완전성 11.6, 가독성 8.7, 저자 소속·직위 표기 5.8) | LLM(등급·근거) + 코드(점수) |
+| 5 | `stage3_aggregator` (3단계 합산·과락) | `stage3_results` | `stage3_total`(80점 만점), `stage3_pass` · 56점 미만이면 `final_verdict`=탈락, `final_score`(2단계+3단계), `rejection_reason` | 코드 |
+| 6 | `agent4_final_decision` (Agent4 종합심의) | `total_stage2_score`, `stage3_total`, 항목별 등급·근거 | `final_score`(100점 만점), `final_verdict`(80점 이상 등재후보 선정), `final_comment` | 코드(판정) + LLM(코멘트) |
+
+- Agent2와 Agent3는 `start_stage3`에서 갈라져 **병렬로** 실행되고, 두 결과는 `stage3_results`에 `add` 리듀서로 합쳐집니다.
+- 등급은 `GRADE_TO_RATIO`(A 1.0 · B 0.9 · C 0.8 · D 0.7 · E 0.6 · F 0)로 항목 배점에 곱해 점수가 됩니다.
+- Agent1의 발간 횟수(Tavily)·온라인 접근성(OpenAlex) 조회는 최종본에서 꺼 두었습니다. 그래서 2단계는 외국어화 점수가 0점일 때만 탈락합니다.
+- 화면에서는 학술지 분야를 입력받지 않아, Agent2의 주제 부합도는 근거 부족으로 F가 나옵니다.
+
+<br>
+
 ## 내 역할
 
 | 구분 | 한 일 | 코드 |
