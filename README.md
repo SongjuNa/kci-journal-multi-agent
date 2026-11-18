@@ -1,16 +1,25 @@
-# KCI 등재후보학술지 평가 지원 Multi-Agent
+# KCI 등재후보학술지 심사 지원 Multi-Agent
 
 > 학술지 논문 PDF와 신청 체크리스트를 넣으면, KCI 등재후보학술지 평가 기준(신청자격 → 체계평가 → 내용평가 → 종합심의)을 단계별로 적용해 **항목별 등급·근거·점수와 선정 여부 초안**을 만들어 주는 LangGraph 멀티 에이전트입니다.
 > 점수는 LLM이 아니라 코드가 계산합니다. LLM은 항목마다 A~F 등급과 근거 문장만 냅니다.
 
-성균관대 × LS AI 교육과정 팀 프로젝트 · 2026.09 (3일 미니 프로젝트)
+성균관대 × LS AI 교육과정 팀 프로젝트 · 2026.09
 
 | 항목 | 내용 |
 |---|---|
-| 기간 | 2026.09.18 ~ 09.20 |
+| 기간 | 2026.09 |
 | 팀 구성 | 에이전트 단위로 역할 분담 |
 | 내 역할 | Agent3 구성·체제·가독성 평가 + 합성 평가 데이터 설계·검증 |
 | 스택 | Python · LangGraph · LangChain · Gemini · Pydantic · Streamlit · pdfplumber |
+
+<br>
+
+## 시연
+
+| 체크리스트 → 분석 | 상세 평가 리포트 |
+|---|---|
+| ![체크리스트와 분석](docs/assets/readme/kci-1-analyze.gif) | ![상세 평가 리포트](docs/assets/readme/kci-2-report.gif) |
+| 신청자격 5항목을 확인하고 논문 PDF를 올리면 그래프가 단계별로 실행되어 최종 판정이 나옵니다 | 단계별 점수와 항목별 등급·근거. 합성 B(구성·가독성 훼손) 논문은 Agent3에서 구성·체제 완전성 E, 가독성 E로 감점됩니다 |
 
 <br>
 
@@ -20,6 +29,7 @@
 
 - **관문(신청자격·항목과락·합산 과락)은 코드**로 판정합니다. 기준 미달이면 그 자리에서 탈락하고 다음 에이전트를 부르지 않습니다.
 - **Agent2(학술적 가치 54점)와 Agent3(구성·체제·가독성 26점)는 병렬**로 실행되고, 합산 80점 중 56점 미만이면 탈락합니다.
+- **Agent1**은 외국어 초록·주제어를 Gemini로 판정합니다. 발간 횟수(Tavily)·온라인 접근성(OpenAlex) 조회 도구도 있지만, 화면에서 학술지 ISSN을 받지 않아 최종본에서는 이 두 항목을 꺼 두고 통과로 처리합니다.
 - **Agent4**는 100점 중 80점 이상이면 선정으로 판정(코드)하고, 심의 코멘트만 LLM이 씁니다.
 
 <br>
@@ -68,15 +78,16 @@
 
 ```bash
 pip install -r requirements.txt
+cp .env.example .env   # GEMINI_API_KEY 입력
 streamlit run app.py
 ```
 
-프로젝트 루트에 `.env`를 만들고 아래 값을 넣습니다.
+`.env` 항목:
 
 ```
 GEMINI_API_KEY=...
-TAVILY_API_KEY=...
-OPEN_ALEX_API_KEY=...      # Agent1 발행 주기·접근성 조회
+TAVILY_API_KEY=...         # 위와 같음
+OPEN_ALEX_API_KEY=...      # 발간 횟수·접근성 조회 (최종본에서는 꺼 둠, 비워도 실행됨)
 GEMINI_MODEL_NAME=gemini-3.7-flash   # 선택
 ```
 
@@ -92,21 +103,10 @@ graph.py               LangGraph 흐름: 관문 노드, 병렬 분기, 합산
 state.py               공유 상태(KCIEvalState), 등급 타입
 config.py              배점·과락 기준·등급 환산표, 모델 이름
 agents/
-  agent1_foreign_lang.py   체계평가 (외국어 초록·키워드, 온라인 접근성, 발행 주기)
+  agent1_foreign_lang.py   체계평가 (외국어 초록·키워드. 발간 횟수·접근성은 꺼 둠)
   agent2_academic_value.py 학술적 가치 (54점)
   agent3_structure.py      구성·체제·가독성 (26점)  ← 내 담당
   agent4_final_decision.py 종합심의 (판정 코드 + LLM 코멘트)
   tools/                   OpenAlex · Tavily 조회 도구
 data/                  합성 평가 데이터와 설계 문서  ← 내 담당
 ```
-
-<br>
-
-## 팀
-
-| 담당 | 내용 |
-|---|---|
-| 나송주 | Agent3 구성·체제·가독성, 합성 평가 데이터 설계·검증 |
-| 팀원 | Agent1 체계평가 · Agent2 학술적 가치(프롬프트 개선 v1~v4) · Agent4 종합심의 · LangGraph 흐름 · Streamlit 화면 |
-
-원본 저장소의 팀 커밋 이력을 그대로 옮겨 왔습니다.
